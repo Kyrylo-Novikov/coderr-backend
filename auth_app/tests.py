@@ -75,3 +75,65 @@ class RegistrationTests(APITestCase):
         response = self.client.post(self.url, payload)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("email", response.data)
+
+
+class LoginTests(APITestCase):
+    """
+    Tests the login cases.
+    """
+
+    def setUp(self):
+        self.url = reverse("login")
+        self.user = CustomUser.objects.create_user(
+            username="exampleUsername",
+            email="example@mail.de",
+            password="examplePassword",
+            type="customer",
+        )
+
+    def test_login_success(self):
+        """
+        Successfully authenticates a user, and returs an auth token, email, and user id.
+        """
+        data = {"username": "exampleUsername", "password": "examplePassword"}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("token", response.data)
+        self.assertIn("user_id", response.data)
+        self.assertIn("email", response.data)
+        self.assertEqual(self.user.username, response.data["username"])
+
+    def test_login_username_invalid(self):
+        """
+        Rejects login with invalid username.
+        """
+        data = {"username": "exampleWrongUsername",
+                "password": "examplePassword"}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_password_invalid(self):
+        """
+        Rejects login with invalid password.
+        """
+        data = {"username": "exampleUsername",
+                "password": "exampleWrongPassword"}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_without_password(self):
+        """
+        Rejects login without password.
+        """
+        data = {"username": "exampleUsername"}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_empty_inputs(self):
+        """
+        Rejects login with empty strings.
+        """
+        data = {"username": "",
+                "password": ""}
+        response = self.client.post(self.url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

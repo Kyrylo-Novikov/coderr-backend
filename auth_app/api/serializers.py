@@ -1,6 +1,7 @@
-from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
+
 from auth_app.models import CustomUser
 
 
@@ -46,3 +47,32 @@ class RegistrationSerializer(serializers.ModelSerializer):
         token, created = Token.objects.get_or_create(user=user)
         user.token = token.key
         return user
+
+
+class LoginSerializer(serializers.Serializer):
+    """
+    Validate login data, hashing the password back to the raw password, and returns an auth token, username, email and the id after success.
+    """
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    token = serializers.CharField(read_only=True)
+    user_id = serializers.IntegerField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+
+    def validate(self, value):
+        """
+        Compares the provided credentials against the user DB to authenticate
+        """
+        username = value.get('username')
+        password = value.get('password')
+        user = authenticate(username=username, password=password)
+        if user is None:
+            raise serializers.ValidationError(
+                "Invalid credentials.")
+        token, created = Token.objects.get_or_create(user=user)
+        return {
+            'token': token.key,
+            'username': user.username,
+            'email': user.email,
+            'user_id': user.id
+        }

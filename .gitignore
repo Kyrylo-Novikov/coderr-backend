@@ -32,6 +32,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# Uploaded media (keep the default avatar)
+media/uploads/*
+!media/uploads/profile_default.jpg
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt

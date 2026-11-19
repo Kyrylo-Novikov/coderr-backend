@@ -192,3 +192,78 @@ class ProfileTests(APITestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.profile.location, '')
         self.assertEqual(self.user.first_name, '')
+
+
+class TypeProfileTests(APITestCase):
+    """
+    Tests for listing profiles filtered by user type
+    """
+
+    def setUp(self):
+        """
+        Creates a user  with a profile and a token, and authenticates the client.
+        """
+        self.business = CustomUser.objects.create_user(username="businessUsername", email="business@mail.de",
+                                                       password="businessPassword", type="business")
+        self.business_profile = Profile.objects.create(user=self.business)
+
+        self.customer = CustomUser.objects.create_user(username="customerUsername", email="customer@mail.de",
+                                                       password="customerPassword", type="customer")
+        self.customer_profile = Profile.objects.create(user=self.customer)
+
+        self.token = Token.objects.create(user=self.business)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+
+    def test_get_business_profile(self):
+        """
+        Retrieves a list with all business profiles
+        """
+        url = reverse('business-profiles')
+        response = self.client.get(url)
+        types = [profile['type'] for profile in response.data]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('business', types)
+        self.assertNotIn('customer', types)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['username'], self.business.username)
+        self.assertEqual(response.data[0]['user'], self.business.id)
+        self.assertNotIn('email', response.data[0])
+
+    def test_get_business_profile_unauthenticated(self):
+        """
+        Reject retrieving the list of business profiles if the current user is unauthenticated
+        """
+        self.client.credentials()
+        url = reverse('business-profiles')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertNotIn(self.business.username, str(response.data))
+
+    def test_get_customer_profile(self):
+        """
+        Retrieves a list with all customer profiles
+        """
+        url = reverse('customer-profiles')
+        response = self.client.get(url)
+        types = [profile['type'] for profile in response.data]
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertNotIn('business', types)
+        self.assertIn('customer', types)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['username'], self.customer.username)
+        self.assertEqual(response.data[0]['user'], self.customer.id)
+        self.assertNotIn('email', response.data[0])
+
+    def test_get_customer_profile_unauthenticated(self):
+        """
+        Reject retrieving the list of customer profiles if the current user is unauthenticated
+        """
+        self.client.credentials()
+        url = reverse('customer-profiles')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertNotIn(self.customer.username, str(response.data))

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from profile_app.models import Profile
 
 
@@ -20,7 +21,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = ['user', 'username', 'first_name',
-                  'last_name', 'file', 'location', 'tel', 'description', 'working_hours', 'email', 'type', 'created_at']
+                  'last_name', 'file', 'location', 'tel', 'description', 'working_hours', 'type', 'email', 'created_at']
 
     def update(self, instance, validated_data):
         """
@@ -33,3 +34,20 @@ class ProfileSerializer(serializers.ModelSerializer):
                 setattr(user, attr, value)
             user.save()
         return super().update(instance, validated_data)
+
+
+class ProfilesTypeSerializer(serializers.ModelSerializer):
+
+    user = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(
+        source='user.first_name', allow_blank=True)
+    last_name = serializers.CharField(
+        source='user.last_name', allow_blank=True)
+    type = serializers.CharField(source='user.type', read_only=True)
+
+    class Meta:
+        model = Profile
+        fields = ['user', 'username', 'first_name',
+                  'last_name', 'file', 'location',
+                  'tel', 'description', 'working_hours', 'type']

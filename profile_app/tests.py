@@ -8,7 +8,6 @@ from profile_app.models import Profile
 
 
 class ProfileTests(APITestCase):
-
     """
     Tests for retrieving and patching user profiles.
     """

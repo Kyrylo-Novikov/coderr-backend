@@ -20,7 +20,7 @@ class Offer(models.Model):
 
 class OfferDetail(models.Model):
     """
-    Represents the details of an offer.
+    Represents one of the three offer variants (basic, standard, premium)
     """
     offer = models.ForeignKey(
         Offer, on_delete=models.CASCADE, related_name='details')
@@ -34,4 +34,4 @@ class OfferDetail(models.Model):
     offer_type = models.CharField(max_length=100, choices=OFFER_TYPE)
 
     def __str__(self):
-        return f"Das ist das {self.title} detail."
+        return f"Das ist das {self.offer_type} detail."

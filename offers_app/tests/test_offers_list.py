@@ -1,79 +1,22 @@
-
 import copy
 
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from auth_app.models import CustomUser
 from offers_app.models import Offer, OfferDetail
 
-
-class BaseTestSetUp(APITestCase):
-    def setUp(self):
-        self.user_data = {
-            "username": "exampleUsername",
-            "email": "example@mail.de",
-            "password": "examplePassword",
-            "type": "business",
-        }
-        self.offer_data = {
-            "title": "Grafikdesign-Paket",
-            "description": "Ein umfassendes Grafikdesign-Paket für Unternehmen.",
-            "details": [
-                {
-                     "title": "Basic Design",
-                     "revisions": 2,
-                    "delivery_time_in_days": 5,
-                    "price": 100,
-                    "features": [
-                        "Logo Design",
-                        "Visitenkarte"
-                    ],
-                    "offer_type": "basic"
-                },
-                {
-                    "title": "Standard Design",
-                    "revisions": 5,
-                    "delivery_time_in_days": 7,
-                    "price": 200,
-                    "features": [
-                        "Logo Design",
-                        "Visitenkarte",
-                        "Briefpapier"
-                    ],
-                    "offer_type": "standard"
-                },
-                {
-                    "title": "Premium Design",
-                    "revisions": 10,
-                    "delivery_time_in_days": 10,
-                    "price": 500,
-                    "features": [
-                        "Logo Design",
-                        "Visitenkarte",
-                        "Briefpapier",
-                        "Flyer"
-                    ],
-                    "offer_type": "premium"
-                }
-            ]
-        }
-        self.user = CustomUser.objects.create_user(**self.user_data)
-        self.token = Token.objects.create(user=self.user)
-        self.client.credentials(
-            HTTP_AUTHORIZATION='Token ' + self.token.key)
+from .base import BaseTestSetUp
 
 
-class OffersTests(BaseTestSetUp, APITestCase):
+class OffersListTests(BaseTestSetUp, APITestCase):
     """
     Tests for retrieving and creating offer
     """
 
     def setUp(self):
         """
-        Set up data for the user with authtoken, password and type  and set uop data for the offer.
+        Sets up the offers list URL on top of the base setup.
         """
         super().setUp()
         self.url = reverse('offers-list')
@@ -123,7 +66,7 @@ class OffersTests(BaseTestSetUp, APITestCase):
 
     def test_post_offer_missing_title(self):
         """
-        Reject post requests if title is missing
+        Reject post requests if title is missing.
         """
         payloade = self.offer_data.copy()
         payloade.pop('title')
@@ -132,7 +75,7 @@ class OffersTests(BaseTestSetUp, APITestCase):
 
     def test_post_offer_missing_description(self):
         """
-        Reject post requests if description is missing
+        Reject post requests if description is missing.
         """
         payloade = self.offer_data.copy()
         payloade.pop('description')
@@ -141,7 +84,7 @@ class OffersTests(BaseTestSetUp, APITestCase):
 
     def test_post_offer_missing_details(self):
         """
-        Reject post requests if details is missing
+        Reject post requests if details is missing.
         """
         payloade = self.offer_data.copy()
         payloade.pop('details')
@@ -169,7 +112,7 @@ class OffersTests(BaseTestSetUp, APITestCase):
 
     def test_get_offers(self):
         """
-        Tests retrievieng the infomations of the offers
+        Tests retrieving the offer list with minimum price and delivery time.
         """
         offer = Offer.objects.create(
             user=self.user,
@@ -182,11 +125,16 @@ class OffersTests(BaseTestSetUp, APITestCase):
                 delivery_time_in_days=5, price=100,
                 features=["Logo"], offer_type=offer_type,
             )
+
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]['title'], "Grafikdesign-Paket")
-        self.assertEqual(len(response.data[0]['details']), 3)
+        self.assertEqual(response.data['results'][0]['min_price'], 100.00)
+        self.assertEqual(response.data['results']
+                         [0]['min_delivery_time'], 5)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results']
+                         [0]['title'], "Grafikdesign-Paket")
+        self.assertEqual(len(response.data['results'][0]['details']), 3)
 
     def test_get_offers_customer(self):
         """
@@ -195,59 +143,4 @@ class OffersTests(BaseTestSetUp, APITestCase):
         self.user.type = 'customer'
         self.user.save()
         response = self.client.get(self.url)
-        print(self.user)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-
-class OfferDetailsTests(BaseTestSetUp, APITestCase):
-    """
-    Tests the retrieving of the offer details
-    """
-
-    def setUp(self):
-        super().setUp()
-        offer = Offer.objects.create(
-            user=self.user,
-            title="Grafikdesign-Paket",
-            description="Beschreibung",
-        )
-        # for offer_type in ("basic", "standard", "premium"):
-        self.detail = OfferDetail.objects.create(
-            offer=offer, title=f"Basic Design", revisions=2,
-            delivery_time_in_days=5, price=100,
-            features=["Logo"], offer_type="basic",
-        )
-
-    def test_get_offerdetails(self):
-        """
-        Successfully retrieview a offer detail
-        """
-        url = reverse('offerdetails-detail',
-                      kwargs={'id': self.detail.id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['id'], self.detail.pk)
-        self.assertEqual(response.data['title'], self.detail.title)
-        self.assertEqual(response.data['offer_type'], 'basic')
-        self.assertEqual(response.data['price'], '100.00')
-
-    def test_get_offerdetails_unauthenticated(self):
-        """
-        Reject detail retrivieng for unauthenticated user
-        """
-        self.client.credentials()
-        url = reverse('offerdetails-detail',
-                      kwargs={'id': self.detail.id})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertNotIn('id', response.data)
-
-    def test_get_offerdetails_not_found(self):
-        """
-        Return 404 for an unknowen offer detail id
-        """
-        url = reverse('offerdetails-detail',
-                      kwargs={'id': 999})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertNotIn('id', response.data)
